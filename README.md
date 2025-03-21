@@ -5,6 +5,11 @@
 
 Custom QMK firmware for the Cidoo V98 keyboard with VIA support.
 
+- [CIDOO V98 RATWARE](#cidoo-v98-ratware)
+  - [Building The Firmware](#building-the-firmware)
+  - [Flashing Instructions](#flashing-instructions)
+  - [License](#license)
+
 ## Building The Firmware
 
 1. Set up the QMK enviroment by following the [QMK setup guide](https://docs.qmk.fm/newbs_getting_started)
