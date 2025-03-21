@@ -10,6 +10,7 @@
   },
   "processor": "STM32F103",
   "bootloader": "stm32duino",
+  "debounce": 5,
   "features": {
     "bootmagic": true,
     "mousekey": true,
@@ -24,8 +25,47 @@
   "build": {
     "lto": true
   },
+  "matrix_pins": {
+    "cols": [
+      "A10",
+      "A9",
+      "A8",
+      "B1",
+      "B0",
+      "A7",
+      "A6",
+      "A5",
+      "A4",
+      "A3",
+      "A2",
+      "NO_PIN",
+      "NO_PIN",
+      "NO_PIN",
+      "NO_PIN",
+      "NO_PIN",
+      "NO_PIN",
+      "NO_PIN"
+    ],
+    "rows": ["B5", "B4", "B3", "A15", "A14", "A13"]
+  },
+  "diode_direction": "COL2ROW",
+  "shift_register": {
+    "data_pin": "C15",
+    "clock_pin": "A1",
+    "latch_pin": "A0",
+    "output_pins": [
+      "NO_PIN",
+      "NO_PIN",
+      "NO_PIN",
+      "NO_PIN",
+      "NO_PIN",
+      "NO_PIN",
+      "C14",
+      "C13"
+    ]
+  },
   "layouts": {
-    "LAYOUT": {
+    "LAYOUT_98_KEYS": {
       "layout": [
         { "matrix": [0, 0], "x": 0, "y": 0 },
         { "matrix": [0, 1], "x": 1.25, "y": 0 },
@@ -40,10 +80,10 @@
         { "matrix": [0, 10], "x": 10.75, "y": 0 },
         { "matrix": [0, 11], "x": 11.75, "y": 0 },
         { "matrix": [0, 12], "x": 12.75, "y": 0 },
-        { "matrix": [0, 14], "x": 14, "y": 0 },
-        { "matrix": [0, 15], "x": 15, "y": 0 },
-        { "matrix": [0, 16], "x": 16, "y": 0 },
-        { "matrix": [0, 17], "x": 17, "y": 0 },
+        { "matrix": [0, 13], "x": 14, "y": 0 },
+        { "matrix": [0, 14], "x": 15, "y": 0 },
+        { "matrix": [0, 15], "x": 16, "y": 0 },
+        { "matrix": [0, 16], "x": 17, "y": 0 },
         { "matrix": [1, 0], "x": 0, "y": 1.25 },
         { "matrix": [1, 1], "x": 1, "y": 1.25 },
         { "matrix": [1, 2], "x": 2, "y": 1.25 },
@@ -129,11 +169,22 @@
     }
   },
   "encoder": {
-    "rotary": [{ "pin_a": "B12", "pin_b": "B13" }]
+    "rotary": [{ "pin_a": "B12", "pin_b": "B13" }],
+    "resolution": 4
   },
   "rgb_matrix": {
     "driver": "snled27351",
     "led_count": 106,
+    "max_brightness": 180,
+    "hue_steps": 0,
+    "sat_steps": 255,
+    "val_steps": 180,
+    "speed_steps": 0,
+    "flags": {
+      "default_mode": "SOLID_COLOR"
+    },
+    "i2c_addresses": ["0x74", "0x77"],
+    "current_tune": [164, 164, 82, 164, 164, 82, 164, 164, 82, 164, 164, 82],
     "animations": {
       "breathing": true,
       "band_spiral_val": true,
@@ -157,6 +208,17 @@
       "splash": true,
       "solid_splash": true
     }
+  },
+  "i2c": {
+    "driver": "I2C_DRIVER_ST",
+    "scl_pin": "B6",
+    "sda_pin": "B7",
+    "clock_speed": 400000,
+    "duty_cycle": "FAST_DUTY_CYCLE_2"
+  },
+  "bootmagic": {
+    "enabled": true,
+    "matrix": [0, 0]
   },
   "dip_switch": {
     "matrix_grid": [[5, 4]]

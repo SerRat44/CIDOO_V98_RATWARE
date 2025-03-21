@@ -1,3 +1,5 @@
+// cidoo_v98.c
+
 #include "quantum.h"
 
 #ifdef RGB_MATRIX_ENABLE
@@ -25,10 +27,10 @@ const snled27351_led_t PROGMEM g_snled27351_leds[SNLED27351_LED_COUNT] = {
     {0, CB9_CA11,   CB7_CA11,   CB8_CA11},
     {0, CB9_CA12,   CB7_CA12,   CB8_CA12},
     {0, CB9_CA13,   CB7_CA13,   CB8_CA13},
-    {0, CB9_CA15,   CB7_CA15,   CB8_CA15},
-    {0, CB9_CA16,   CB7_CA16,   CB8_CA16},
     {0, CB12_CA5,   CB10_CA5,   CB11_CA5},
     {0, CB12_CA6,   CB10_CA6,   CB11_CA6},
+    {0, CB9_CA15,   CB7_CA15,   CB8_CA15},
+    {0, CB9_CA16,   CB7_CA16,   CB8_CA16},
     
     // Second row (18 keys)
     {0, CB3_CA1,    CB1_CA1,    CB2_CA1},
@@ -83,10 +85,10 @@ const snled27351_led_t PROGMEM g_snled27351_leds[SNLED27351_LED_COUNT] = {
     {1, CB3_CA7,    CB1_CA7,    CB2_CA7},
     {1, CB3_CA6,    CB1_CA6,    CB2_CA6},
     {1, CB3_CA5,    CB1_CA5,    CB2_CA5},
-    {1, CB3_CA3,    CB1_CA3,    CB2_CA3},
     {1, CB12_CA3,   CB10_CA3,   CB11_CA3},
     {1, CB12_CA4,   CB10_CA4,   CB11_CA4},
     {1, CB12_CA5,   CB10_CA5,   CB11_CA5},
+    {1, CB3_CA3,    CB1_CA3,    CB2_CA3},
     
     // Fifth row (17 keys)
     {1, CB9_CA16,   CB7_CA16,   CB8_CA16},
@@ -138,46 +140,46 @@ const snled27351_led_t PROGMEM g_snled27351_leds[SNLED27351_LED_COUNT] = {
 
 led_config_t g_led_config = {
     {
-        // Key Matrix to LED Index based on your layout with no LED for encoder
-        { 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, __, 13, 14, 15, 16 },
+        // Key Matrix to LED Index based on the new layout with no LED for encoder
+        { 0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, __, 13, 14, 15, 16 },
         { 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34 },
         { 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52 },
         { 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, __, 65, 66, 67, 68, __ },
         { 69, __, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85 },
-        { 86, 87, 88, __, __, __, 89, __, __, __, 90, 91, 92, __, 93, 94, 95, 96 },
+        { 86, 87, 88, __, __, __, 89, __, __, __, 89, 90, 91, 92, 93, 94, 95, __ },
     },
     {
-        // LED Index to Physical Position - adjusted for 98 keys with no encoder LED
+        // LED Index to Physical Position
         // First row (17 keys)
-        {0,0},         {20,0},  {30,0},  {40,0},  {50,0},  {65,0},   {75,0},   {85,0},   {95,0},   {110,0},  {120,0},  {130,0},  {140,0},           {175,0},  {185,0},  {195,0},  {205,0},
+        {0,0}, {20,0}, {30,0}, {40,0}, {50,0}, {65,0}, {75,0}, {85,0}, {95,0}, {110,0}, {120,0}, {130,0}, {140,0}, {160,0}, {175,0}, {185,0}, {205,0},
         // Second row (18 keys)
-        {0,15},        {15,15}, {25,15}, {35,15}, {45,15}, {55,15},  {65,15},  {75,15},  {85,15},  {95,15},  {105,15}, {115,15}, {125,15}, {140,15}, {160,15}, {175,15}, {185,15}, {195,15},
+        {0,15}, {15,15}, {25,15}, {35,15}, {45,15}, {55,15}, {65,15}, {75,15}, {85,15}, {95,15}, {105,15}, {115,15}, {125,15}, {140,15}, {160,15}, {175,15}, {185,15}, {195,15},
         // Third row (18 keys)
-        {3,25},        {18,25}, {28,25}, {38,25}, {48,25}, {58,25},  {68,25},  {78,25},  {88,25},  {98,25},  {108,25}, {118,25}, {128,25}, {143,25}, {160,25}, {175,25}, {185,25}, {195,25},
+        {3,25}, {18,25}, {28,25}, {38,25}, {48,25}, {58,25}, {68,25}, {78,25}, {88,25}, {98,25}, {108,25}, {118,25}, {128,25}, {143,25}, {160,25}, {175,25}, {185,25}, {195,25},
         // Fourth row (16 keys)
-        {5,35},        {20,35}, {30,35}, {40,35}, {50,35}, {60,35},  {70,35},  {80,35},  {90,35},  {100,35}, {110,35},           {125,35}, {143,35}, {160,35}, {175,35}, {185,35},
+        {5,35}, {20,35}, {30,35}, {40,35}, {50,35}, {60,35}, {70,35}, {80,35}, {90,35}, {100,35}, {110,35}, {125,35}, {143,35}, {160,35}, {175,35}, {185,35},
         // Fifth row (17 keys)
-        {8,45},                 {25,45}, {35,45}, {45,45}, {55,45},  {65,45},  {75,45},  {85,45},  {95,45},  {105,45}, {115,45}, {130,45}, {143,45}, {160,45}, {175,45}, {185,45}, {195,45},
+        {8,45}, {25,45}, {35,45}, {45,45}, {55,45}, {65,45}, {75,45}, {85,45}, {95,45}, {105,45}, {115,45}, {130,45}, {143,45}, {160,45}, {175,45}, {185,45}, {195,45},
         // Sixth row (12 keys)
-        {5,55}, {18,55}, {30,55},                          {75,55},                                {110,55}, {123,55}, {136,55}, {149,55},          {175,55}, {185,55}, {195,55},
+        {5,55}, {18,55}, {30,55}, {75,55}, {110,55}, {123,55}, {136,55}, {149,55}, {143,45}, {175,55}, {185,55}, {195,55},
         
-        // Backlight LED positions (front LED strip) - positions evenly across the front edge
+        // Backlight LED positions (front LED strip)
         {20,64}, {50,64}, {80,64}, {110,64}, {140,64}, {170,64}, {200,64}, {230,64}
     },
     {
-        // RGB LED Index to Flag - adjusted for your layout
+        // RGB LED Index to Flag
         // First row (17 keys)
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,    1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
         // Second row (18 keys)
         1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1, 1, 1, 1,
         // Third row (18 keys)
         1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1, 1, 1, 1,
         // Fourth row (16 keys)
-        1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,    4, 1, 1, 1, 1,
+        1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1, 1, 1,
         // Fifth row (17 keys)
-        1,    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1, 1, 1, 1, 1,
+        1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1, 1, 1, 1, 1,
         // Sixth row (12 keys)
-        1, 1, 1,          4,          1, 1, 1, 1,    1, 1, 1,
+        1, 1, 1, 4, 1, 1, 1, 1, 1, 1, 1, 1,
         
         // Backlight flags (32 = underglow/strip)
         32, 32, 32, 32, 32, 32, 32, 32
@@ -220,7 +222,8 @@ bool dip_switch_update_kb(uint8_t index, bool active) {
 
 #endif // DIP_SWITCH_ENABLE
 
-#if defined(RGB_MATRIX_ENABLE) && (defined(CAPS_LOCK_LED_INDEX) || defined(NUM_LOCK_LED_INDEX))
+// RGB Matrix toggle handling
+#ifdef RGB_MATRIX_ENABLE
 
 bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
     if (!process_record_user(keycode, record)) {
@@ -248,30 +251,4 @@ bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
     return true;
 }
 
-bool rgb_matrix_indicators_advanced_kb(uint8_t led_min, uint8_t led_max) {
-    if (!rgb_matrix_indicators_advanced_user(led_min, led_max)) {
-        return false;
-    }
-    // RGB_MATRIX_INDICATOR_SET_COLOR(index, red, green, blue);
-#    if defined(CAPS_LOCK_LED_INDEX)
-    if (host_keyboard_led_state().caps_lock) {
-        RGB_MATRIX_INDICATOR_SET_COLOR(CAPS_LOCK_LED_INDEX, 255, 255, 255);
-    } else {
-        if (!rgb_matrix_get_flags()) {
-            RGB_MATRIX_INDICATOR_SET_COLOR(CAPS_LOCK_LED_INDEX, 0, 0, 0);
-        }
-    }
-#    endif // CAPS_LOCK_LED_INDEX
-#    if defined(NUM_LOCK_LED_INDEX)
-    if (host_keyboard_led_state().num_lock) {
-        RGB_MATRIX_INDICATOR_SET_COLOR(NUM_LOCK_LED_INDEX, 255, 255, 255);
-    } else {
-        if (!rgb_matrix_get_flags()) {
-            RGB_MATRIX_INDICATOR_SET_COLOR(NUM_LOCK_LED_INDEX, 0, 0, 0);
-        }
-    }
-#    endif // NUM_LOCK_LED_INDEX
-    return true;
-}
-
-#endif // RGB_MATRIX_ENABLE...
+#endif // RGB_MATRIX_ENABLE
