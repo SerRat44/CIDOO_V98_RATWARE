@@ -3,6 +3,7 @@
   "manufacturer": "Cidoo",
   "url": "https://github.com/SerRat44/CIDOO_V98_RATWARE",
   "maintainer": "Ser Rat",
+  "bootloader_instructions": "Hold the top left key (usually ESC) while plugging in the keyboard",
   "usb": {
     "vid": "0x1EAF",
     "pid": "0x0003",
@@ -13,14 +14,22 @@
   "debounce": 5,
   "features": {
     "bootmagic": true,
-    "mousekey": true,
+    "mousekey": false,
     "extrakey": true,
+    "console": false,
+    "command": false,
     "nkro": true,
     "rgb_matrix": true,
     "encoder": true,
     "dip_switch": true,
     "encoder_map": true,
-    "via": true
+    "via": true,
+    "rgblight": false,
+    "audio": false,
+    "grave_esc": false,
+    "space_cadet": false,
+    "magic": false,
+    "music": false
   },
   "build": {
     "lto": true
@@ -65,7 +74,7 @@
     ]
   },
   "layouts": {
-    "LAYOUT_98_KEYS": {
+    "LAYOUT_98_keys": {
       "layout": [
         { "matrix": [0, 0], "x": 0, "y": 0 },
         { "matrix": [0, 1], "x": 1.25, "y": 0 },
@@ -174,39 +183,22 @@
   },
   "rgb_matrix": {
     "driver": "snled27351",
-    "led_count": 106,
+    "driver_count": 2,
+    "led_count": 105,
     "max_brightness": 180,
     "hue_steps": 0,
     "sat_steps": 255,
     "val_steps": 180,
     "speed_steps": 0,
     "flags": {
-      "default_mode": "SOLID_COLOR"
+      "default_mode": "CYCLE_ALL"
     },
     "i2c_addresses": ["0x74", "0x77"],
     "current_tune": [164, 164, 82, 164, 164, 82, 164, 164, 82, 164, 164, 82],
     "animations": {
       "breathing": true,
-      "band_spiral_val": true,
-      "cycle_all": true,
-      "cycle_left_right": true,
-      "cycle_up_down": true,
-      "rainbow_moving_chevron": true,
-      "cycle_out_in": true,
-      "cycle_out_in_dual": true,
-      "cycle_pinwheel": true,
-      "cycle_spiral": true,
-      "dual_beacon": true,
-      "rainbow_beacon": true,
-      "jellybean_raindrops": true,
-      "pixel_rain": true,
-      "typing_heatmap": true,
-      "digital_rain": true,
-      "solid_reactive_simple": true,
-      "solid_reactive_multiwide": true,
-      "solid_reactive_multinexus": true,
-      "splash": true,
-      "solid_splash": true
+      "solid_color": true,
+      "cycle_all": true
     }
   },
   "i2c": {

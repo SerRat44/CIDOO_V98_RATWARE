@@ -1,11 +1,9 @@
-// cidoo_v98.c
-
 #include "quantum.h"
 
 #ifdef RGB_MATRIX_ENABLE
 
 // clang-format off
-
+// Define the LED map for the SNLED27351 driver
 const snled27351_led_t PROGMEM g_snled27351_leds[SNLED27351_LED_COUNT] = {
 /*
  *   driver
@@ -123,24 +121,23 @@ const snled27351_led_t PROGMEM g_snled27351_leds[SNLED27351_LED_COUNT] = {
     {1, CB12_CA16,  CB10_CA16,  CB11_CA16},
     {1, CB12_CA2,   CB10_CA2,   CB11_CA2},
     
-    // The following are the underglow/backlight strip LEDs, numbered 98-105
+    // Underglow/backlight strip LEDs (7 keys)
     {1, CB12_CA6,    CB10_CA6,    CB11_CA6},
     {1, CB12_CA7,    CB10_CA7,    CB11_CA7},
     {1, CB12_CA8,    CB10_CA8,    CB11_CA8},
     {1, CB12_CA9,    CB10_CA9,    CB11_CA9},
     {1, CB12_CA10,   CB10_CA10,   CB11_CA10},
     {1, CB12_CA11,   CB10_CA11,   CB11_CA11},
-    {1, CB12_CA12,   CB10_CA12,   CB11_CA12},
-    {1, CB12_CA2,    CB10_CA2,    CB11_CA2},
+    {1, CB12_CA12,   CB10_CA12,   CB11_CA12}
 };
 
 #define __ NO_LED
 #define BACKLIGHT_START_INDEX 98
-#define BACKLIGHT_LED_COUNT 8
+#define BACKLIGHT_LED_COUNT 7
 
 led_config_t g_led_config = {
     {
-        // Key Matrix to LED Index based on the new layout with no LED for encoder
+        // Key Matrix to LED Index mapping
         { 0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, __, 13, 14, 15, 16 },
         { 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34 },
         { 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52 },
@@ -164,7 +161,7 @@ led_config_t g_led_config = {
         {5,55}, {18,55}, {30,55}, {75,55}, {110,55}, {123,55}, {136,55}, {149,55}, {143,45}, {175,55}, {185,55}, {195,55},
         
         // Backlight LED positions (front LED strip)
-        {20,64}, {50,64}, {80,64}, {110,64}, {140,64}, {170,64}, {200,64}, {230,64}
+        {20,64}, {50,64}, {80,64}, {110,64}, {140,64}, {170,64}, {200,64}
     },
     {
         // RGB LED Index to Flag
@@ -182,73 +179,46 @@ led_config_t g_led_config = {
         1, 1, 1, 4, 1, 1, 1, 1, 1, 1, 1, 1,
         
         // Backlight flags (32 = underglow/strip)
-        32, 32, 32, 32, 32, 32, 32, 32
+        32, 32, 32, 32, 32, 32, 32
     }
 };
 
 #endif // RGB_MATRIX_ENABLE
 
-#ifdef BACKLIGHT_ENABLE
+// Encoder Implementation
+#ifdef ENCODER_ENABLE
 
-void backlight_init_ports(void) {
-    // Setup backlight pin as output
-    setPinOutput(B7);
-    // Turn backlight on
-    writePinHigh(B7);
-}
-
-void backlight_set(uint8_t level) {
-    // For regular backlight control
-    if (level > 0) {
-        writePinHigh(B7);
-    } else {
-        writePinLow(B7);
+bool encoder_update_kb(uint8_t index, bool clockwise) {
+    if (!encoder_update_user(index, clockwise)) {
+        return false;
     }
+    
+    // Default behavior just sends keyboard codes
+    if (clockwise) {
+        tap_code(KC_VOLU);
+    } else {
+        tap_code(KC_VOLD);
+    }
+    
+    return true;
 }
 
-#endif // BACKLIGHT_ENABLE
+#endif // ENCODER_ENABLE
 
+// DIP switch support
 #ifdef DIP_SWITCH_ENABLE
 
 bool dip_switch_update_kb(uint8_t index, bool active) {
     if (!dip_switch_update_user(index, active)) {
         return false;
     }
+    
     if (index == 0) {
-        default_layer_set(1UL << (active ? 2 : 0));
+        // Example: toggle default layer based on DIP switch position
+        default_layer_set(1UL << (active ? 1 : 0));
     }
+    
     return true;
 }
 
 #endif // DIP_SWITCH_ENABLE
-
-// RGB Matrix toggle handling
-#ifdef RGB_MATRIX_ENABLE
-
-bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
-    if (!process_record_user(keycode, record)) {
-        return false;
-    }
-    switch (keycode) {
-        case QK_RGB_MATRIX_TOGGLE:
-            if (record->event.pressed) {
-                switch (rgb_matrix_get_flags()) {
-                    case LED_FLAG_ALL: {
-                        rgb_matrix_set_flags(LED_FLAG_NONE);
-                        rgb_matrix_set_color_all(0, 0, 0);
-                    } break;
-                    default: {
-                        rgb_matrix_set_flags(LED_FLAG_ALL);
-                    } break;
-                }
-            }
-            if (!rgb_matrix_is_enabled()) {
-                rgb_matrix_set_flags(LED_FLAG_ALL);
-                rgb_matrix_enable();
-            }
-            return false;
-    }
-    return true;
-}
-
-#endif // RGB_MATRIX_ENABLE
