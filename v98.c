@@ -1,248 +1,87 @@
-/*
- * This file is part of the QMK Firmware for Cidoo V98
+/* Copyright 2022 @ Keychron (https://www.keychron.com)
  *
- * Copyright (c) 2023 QMK Community
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "v98.h"
 #include "quantum.h"
 
-// Define global variables for battery and connection state
-static uint8_t battery_level = 100;
-static uint32_t battery_timer = 0;
-static bool charging_status = false;
-static bool bt_connected = false;
-static bool usb_connected = true;
+#ifdef DIP_SWITCH_ENABLE
 
-// Keyboard initialization code
-void keyboard_pre_init_kb(void) {
-    // Initialize pins
-    setPinOutput(LED_CAPS_LOCK_PIN);
-    setPinOutput(LED_NUM_LOCK_PIN);
-    setPinOutput(LED_SCROLL_LOCK_PIN);
-    
-    // Initialize bluetooth hardware if enabled
-#ifdef BLUETOOTH_ENABLE
-    // Set Bluetooth pins
-    setPinOutput(B12); // BT_POWER
-    setPinOutput(B11); // BT_RESET
-    setPinInput(B10);  // BT_HOST_WAKE
-    
-    // Start with Bluetooth off if USB is connected
-    palClearPad(GPIOB, GPIOB_BT_POWER);
-#endif
-
-    // Initialize battery monitoring
-#ifdef BATTERY_ENABLE
-    // Set up ADC for battery sensing
-    palSetPadMode(GPIOA, GPIOA_BAT_SENSE, PAL_MODE_INPUT_ANALOG);
-    palSetPadMode(GPIOA, GPIOA_BAT_CHARGE_DETECT, PAL_MODE_INPUT_PULLUP);
-    
-    // Initialize battery timer
-    battery_timer = timer_read32();
-#endif
-
-    // Call the keyboard pre-init user code
-    keyboard_pre_init_user();
+bool dip_switch_update_kb(uint8_t index, bool active) {
+    if (!dip_switch_update_user(index, active)) {
+        return false;
+    }
+    if (index == 0) {
+        default_layer_set(1UL << (active ? 2 : 0));
+    }
+    return true;
 }
 
-// Keyboard post-initialization code
-void keyboard_post_init_kb(void) {
-    // Enable RGB LED if available
-#ifdef RGBLIGHT_ENABLE
-    rgblight_enable();
-    rgblight_mode(RGBLIGHT_MODE_BREATHING);
-    rgblight_sethsv(HSV_BLUE);
-#endif
+#endif  // DIP_SWITCH_ENABLE
 
-    // Set initial LED states
-    led_update_kb(host_keyboard_led_state());
-    
-    // Set rotary encoder default functionality
-    encoder_init();
-    
-    // Call the keyboard post-init user code
-    keyboard_post_init_user();
-}
+#if defined(RGB_MATRIX_ENABLE) && (defined(CAPS_LOCK_LED_INDEX) || defined(NUM_LOCK_LED_INDEX))
 
-// Process keyboard-level keycodes
 bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
-    // Update wake timer on any key press to prevent sleep
-#ifdef MATRIX_POWER_SAVE
-    if (record->event.pressed) {
-        matrix_timer = timer_read32();
+    if (!process_record_user(keycode, record)) {
+        return false;
     }
-#endif
-
-    // Handle custom keycodes
     switch (keycode) {
-        case KC_BLUETOOTH:
+#    ifdef RGB_MATRIX_ENABLE
+        case QK_RGB_MATRIX_TOGGLE:
             if (record->event.pressed) {
-                set_bluetooth_mode(!is_bluetooth_connected());
-            }
-            return false;
-            
-        case KC_BATTERY:
-            if (record->event.pressed) {
-                // Show battery level through RGB LED or other indicator
-#ifdef RGBLIGHT_ENABLE
-                uint8_t level = get_battery_level();
-                if (level > 75) {
-                    rgblight_sethsv_noeeprom(HSV_GREEN);
-                } else if (level > 50) {
-                    rgblight_sethsv_noeeprom(HSV_YELLOW);
-                } else if (level > 25) {
-                    rgblight_sethsv_noeeprom(HSV_ORANGE);
-                } else {
-                    rgblight_sethsv_noeeprom(HSV_RED);
+                switch (rgb_matrix_get_flags()) {
+                    case LED_FLAG_ALL: {
+                        rgb_matrix_set_flags(LED_FLAG_NONE);
+                        rgb_matrix_set_color_all(0, 0, 0);
+                    } break;
+                    default: {
+                        rgb_matrix_set_flags(LED_FLAG_ALL);
+                    } break;
                 }
-                // Return to normal after 2 seconds
-                rgblight_timer_start(2000);
-#endif
+            }
+            if (!rgb_matrix_is_enabled()) {
+                rgb_matrix_set_flags(LED_FLAG_ALL);
+                rgb_matrix_enable();
             }
             return false;
+#    endif
     }
-    
-    // Process user keycodes
-    return process_record_user(keycode, record);
+    return true;
 }
 
-// LED update code
-bool led_update_kb(led_t led_state) {
-    bool res = led_update_user(led_state);
-    if (res) {
-        // Update LEDs
-        writePin(LED_CAPS_LOCK_PIN, led_state.caps_lock);
-        writePin(LED_NUM_LOCK_PIN, led_state.num_lock);
-        writePin(LED_SCROLL_LOCK_PIN, led_state.scroll_lock);
-    }
-    return res;
-}
-
-// Rotary encoder update function
-bool encoder_update_kb(bool clockwise) {
-    // Default encoder behavior - media volume control
-    if (clockwise) {
-        tap_code(KC_VOLU);
+bool rgb_matrix_indicators_advanced_kb(uint8_t led_min, uint8_t led_max) {
+    if (!rgb_matrix_indicators_advanced_user(led_min, led_max)) { return false; }
+    // RGB_MATRIX_INDICATOR_SET_COLOR(index, red, green, blue);
+#    if defined(CAPS_LOCK_LED_INDEX)
+    if (host_keyboard_led_state().caps_lock) {
+        RGB_MATRIX_INDICATOR_SET_COLOR(CAPS_LOCK_LED_INDEX, 255, 255, 255);
     } else {
-        tap_code(KC_VOLD);
-    }
-    
-    // Allow for user customization
-    return encoder_update_user(clockwise);
-}
-
-// Called on every matrix scan
-void matrix_scan_kb(void) {
-    // Check battery level periodically
-#ifdef BATTERY_ENABLE
-    if (timer_elapsed32(battery_timer) > BATTERY_POLLING_INTERVAL) {
-        battery_level = board_get_battery_level();
-        charging_status = board_is_charging();
-        battery_timer = timer_read32();
-        
-        // Handle low battery warning
-        if (battery_level <= BATTERY_LOW_WARNING_LEVEL && !charging_status) {
-#ifdef RGBLIGHT_ENABLE
-            // Flash RGB LEDs for low battery warning
-            rgblight_blink_fade_start(10, 30);
-#endif
-        }
-        
-        // Handle critical battery level
-        if (battery_level <= BATTERY_CRITICAL_LEVEL && !charging_status) {
-            // Enter deep power saving mode
-#ifdef RGBLIGHT_ENABLE
-            rgblight_disable_noeeprom();
-#endif
-            // Reduce matrix scan rate dramatically
-            matrix_power_saving = true;
+        if (!rgb_matrix_get_flags()) {
+            RGB_MATRIX_INDICATOR_SET_COLOR(CAPS_LOCK_LED_INDEX, 0, 0, 0);
         }
     }
-#endif
-
-    // Handle connection state changes
-#ifdef BLUETOOTH_ENABLE
-    // Check if USB was connected but is now disconnected
-    if (usb_connected && USB_DeviceState != DEVICE_STATE_Configured) {
-        usb_connected = false;
-        set_bluetooth_mode(true);
-    }
-    // Check if USB was disconnected but is now connected
-    else if (!usb_connected && USB_DeviceState == DEVICE_STATE_Configured) {
-        usb_connected = true;
-        set_bluetooth_mode(false);
-    }
-#endif
-
-    // Call user matrix scan function
-    matrix_scan_user();
-}
-
-// Function to get battery level
-uint8_t get_battery_level(void) {
-    return battery_level;
-}
-
-// Function to check if battery is charging
-bool is_charging(void) {
-    return charging_status;
-}
-
-// Function to check if Bluetooth is connected
-bool is_bluetooth_connected(void) {
-    return bt_connected;
-}
-
-// Function to check if USB is connected
-bool is_usb_connected(void) {
-    return usb_connected;
-}
-
-// Function to switch between Bluetooth and USB modes
-void set_bluetooth_mode(bool enable) {
-#ifdef BLUETOOTH_ENABLE
-    if (enable) {
-        // Turn on Bluetooth module
-        palSetPad(GPIOB, GPIOB_BT_POWER);
-        palSetPad(GPIOB, GPIOB_BT_RESET);
-        wait_ms(100);
-        palClearPad(GPIOB, GPIOB_BT_RESET);
-        wait_ms(100);
-        bt_connected = true;
-        
-#ifdef RGBLIGHT_ENABLE
-        // Indicate Bluetooth mode with blue color
-        rgblight_sethsv_noeeprom(HSV_BLUE);
-#endif
+#    endif // CAPS_LOCK_LED_INDEX
+#    if defined(NUM_LOCK_LED_INDEX)
+    if (host_keyboard_led_state().num_lock) {
+        RGB_MATRIX_INDICATOR_SET_COLOR(NUM_LOCK_LED_INDEX, 255, 255, 255);
     } else {
-        // Turn off Bluetooth module to save power
-        palClearPad(GPIOB, GPIOB_BT_POWER);
-        bt_connected = false;
-        
-#ifdef RGBLIGHT_ENABLE
-        // Indicate USB mode with cyan color
-        rgblight_sethsv_noeeprom(HSV_CYAN);
-#endif
+        if (!rgb_matrix_get_flags()) {
+            RGB_MATRIX_INDICATOR_SET_COLOR(NUM_LOCK_LED_INDEX, 0, 0, 0);
+        }
     }
-#endif
+#    endif // NUM_LOCK_LED_INDEX
+    return true;
 }
 
-// Function called when device enters suspend mode
-void suspend_power_down_kb(void) {
-    // Turn off LEDs to save power
-#ifdef RGBLIGHT_ENABLE
-    rgblight_disable_noeeprom();
-#endif
-    
-    // Put Bluetooth module into sleep mode if active
-#ifdef BLUETOOTH_ENABLE
-    if (bt_connected) {
-        // Send sleep command to Bluetooth module
-        // The exact implementation depends on the specific Bluetooth module
-    }
-#endif
-    
-    // Call
+#endif // RGB_MATRIX_ENABLE...

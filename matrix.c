@@ -1,218 +1,210 @@
-/*
- * This file is part of the QMK Firmware for Cidoo V98
+/* Copyright 2022 @ Keychron (https://www.keychron.com)
  *
- * Copyright (c) 2023 QMK Community
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "quantum.h"
 #include "matrix.h"
-#include "debounce.h"
-#include "wait.h"
-#include "debug.h"
-#include "gpio.h"
-#include "cidoo_v98.h"
+#include "atomic_util.h"
+#include <string.h>
 
-/* 96% keyboard typically uses a 12x9 matrix (12 columns, 9 rows) */
-#define ROWS_PER_HAND 9
-#define COLS_PER_HAND 12
+// Pin connected to DS of 74HC595
+#define DATA_PIN C15
+// Pin connected to SH_CP of 74HC595
+#define CLOCK_PIN A1
+// Pin connected to ST_CP of 74HC595
+#define LATCH_PIN A0
 
-/* Pin configuration for rows and columns */
-static const pin_t row_pins[ROWS_PER_HAND] = MATRIX_ROW_PINS;
-static const pin_t col_pins[COLS_PER_HAND] = MATRIX_COL_PINS;
+#ifdef MATRIX_ROW_PINS
+static pin_t row_pins[MATRIX_ROWS] = MATRIX_ROW_PINS;
+#endif // MATRIX_ROW_PINS
+#ifdef MATRIX_COL_PINS
+static pin_t col_pins[MATRIX_COLS] = MATRIX_COL_PINS;
+#endif // MATRIX_COL_PINS
 
-/* Matrix state arrays */
-static matrix_row_t raw_matrix[MATRIX_ROWS];  // raw values
-static matrix_row_t matrix[MATRIX_ROWS];      // debounced values
-static matrix_row_t prev_matrix[MATRIX_ROWS] = {0};  // previous state for detection
+#define ROWS_PER_HAND (MATRIX_ROWS)
 
-/* Matrix state tracking for bluetooth/wired mode */
-static bool matrix_has_changed = false;
-static uint8_t current_mode = MATRIX_MODE_WIRED;  // Start in wired mode by default
-
-#ifdef MATRIX_POWER_SAVE
-static uint32_t matrix_timer = 0;
-static bool matrix_power_saving = false;
-#endif
-
-/**
- * Initialize matrix hardware.
- */
-void matrix_init_custom(void) {
-    debug_enable = true;
-    debug_matrix = true;
-    
-    // Initialize all pins
-    for (uint8_t i = 0; i < ROWS_PER_HAND; i++) {
-        setPinInputHigh(row_pins[i]);
+static inline void gpio_atomic_set_pin_output_low(pin_t pin) {
+    ATOMIC_BLOCK_FORCEON {
+        gpio_set_pin_output(pin);
+        gpio_write_pin_low(pin);
     }
-    
-    for (uint8_t i = 0; i < COLS_PER_HAND; i++) {
-        setPinOutput(col_pins[i]);
-        writePinHigh(col_pins[i]);
-    }
-    
-    // Initialize matrix state
-    for (uint8_t i = 0; i < MATRIX_ROWS; i++) {
-        raw_matrix[i] = 0;
-        matrix[i] = 0;
-    }
-    
-    // Initialize bluetooth module if available
-#ifdef BLUETOOTH_ENABLE
-    bluetooth_init();
-#endif
-
-    // Initialize debouncing
-    debounce_init(MATRIX_ROWS);
-    
-    // Ensure everything is properly set
-    matrix_init_quantum();
 }
 
-/**
- * Scan the physical matrix and update internal matrix state.
- * 
- * This allows support for both wired and wireless connections.
- */
-bool matrix_scan_custom(void) {
-    bool changed = false;
-    
-    // Check connection mode (USB or Bluetooth)
-#ifdef BLUETOOTH_ENABLE
-    if (USB_DeviceState != DEVICE_STATE_Configured) {
-        // If USB not connected, switch to Bluetooth mode
-        if (current_mode == MATRIX_MODE_WIRED) {
-            bluetooth_mode_enable();
-            current_mode = MATRIX_MODE_BT;
-        }
+static inline void gpio_atomic_set_pin_output_high(pin_t pin) {
+    ATOMIC_BLOCK_FORCEON {
+        gpio_set_pin_output(pin);
+        gpio_write_pin_high(pin);
+    }
+}
+
+static inline void gpio_atomic_set_pin_input_high(pin_t pin) {
+    ATOMIC_BLOCK_FORCEON {
+        gpio_set_pin_input_high(pin);
+    }
+}
+
+static inline uint8_t readMatrixPin(pin_t pin) {
+    if (pin != NO_PIN) {
+        return gpio_read_pin(pin);
     } else {
-        // If USB connected, switch to wired mode
-        if (current_mode == MATRIX_MODE_BT) {
-            bluetooth_mode_disable();
-            current_mode = MATRIX_MODE_WIRED;
-        }
+        return 1;
     }
-#endif
-
-#ifdef MATRIX_POWER_SAVE
-    // Implement power-saving feature to conserve battery
-    // If no key has been pressed for a while, scan less frequently
-    if (timer_elapsed32(matrix_timer) > MATRIX_POWER_SAVE_TIMEOUT) {
-        if (!matrix_power_saving) {
-            matrix_power_saving = true;
-        }
-        
-        // When in power-saving mode, only scan matrix occasionally
-        if (timer_elapsed32(matrix_timer) < MATRIX_POWER_SAVE_TIMEOUT + 500) {
-            return matrix_has_changed;
-        }
-        
-        matrix_timer = timer_read32();
-    } else if (matrix_power_saving) {
-        matrix_power_saving = false;
-    }
-#endif
-
-    // Save previous state for comparison
-    for (uint8_t i = 0; i < MATRIX_ROWS; i++) {
-        prev_matrix[i] = matrix[i];
-    }
-    
-    // Scan the physical matrix
-    for (uint8_t current_col = 0; current_col < COLS_PER_HAND; current_col++) {
-        // Select column by setting it low
-        writePinLow(col_pins[current_col]);
-        
-        // Small delay for column to stabilize
-        wait_us(30);
-        
-        // Read row pins
-        for (uint8_t current_row = 0; current_row < ROWS_PER_HAND; current_row++) {
-            // If pin reads low, key is pressed
-            bool pressed = !readPin(row_pins[current_row]);
-            matrix_row_t row_mask = ((matrix_row_t)1 << current_col);
-            
-            if (pressed) {
-                raw_matrix[current_row] |= row_mask;
-            } else {
-                raw_matrix[current_row] &= ~row_mask;
-            }
-        }
-        
-        // Unselect column by setting it high
-        writePinHigh(col_pins[current_col]);
-    }
-    
-    // Debounce the matrix
-    debounce(raw_matrix, matrix, MATRIX_ROWS, changed);
-    
-    // Update battery level monitoring when running on battery
-#ifdef BLUETOOTH_ENABLE
-    if (current_mode == MATRIX_MODE_BT && timer_elapsed32(battery_timer) > BATTERY_CHECK_INTERVAL) {
-        battery_level = board_get_battery_level();
-        battery_timer = timer_read32();
-    }
-#endif
-
-    // Check if matrix has changed for power saving feature
-    matrix_has_changed = false;
-    for (uint8_t i = 0; i < MATRIX_ROWS; i++) {
-        if (prev_matrix[i] != matrix[i]) {
-            matrix_has_changed = true;
-#ifdef MATRIX_POWER_SAVE
-            matrix_timer = timer_read32();  // Reset power saving timer on any key press
-#endif
-        }
-    }
-    
-    return matrix_has_changed;
 }
 
-/**
- * Read and return current matrix state.
- */
-matrix_row_t matrix_get_row(uint8_t row) {
-    return matrix[row];
+static void shiftOut(uint8_t dataOut) {
+    for (uint8_t i = 0; i < 8; i++) {
+        if (dataOut & 0x1) {
+            gpio_atomic_set_pin_output_high(DATA_PIN);
+        } else {
+            gpio_atomic_set_pin_output_low(DATA_PIN);
+        }
+        dataOut = dataOut >> 1;
+        gpio_atomic_set_pin_output_high(CLOCK_PIN);
+        gpio_atomic_set_pin_output_low(CLOCK_PIN);
+    }
+    gpio_atomic_set_pin_output_high(LATCH_PIN);
+    gpio_atomic_set_pin_output_low(LATCH_PIN);
 }
 
-/**
- * Power management - prepare for sleep/suspend mode.
- */
-void matrix_power_down(void) {
-    // Prepare pins for low power mode
-    for (uint8_t i = 0; i < ROWS_PER_HAND; i++) {
-        setPinInputHigh(row_pins[i]);
+static void shiftout_single(uint8_t data) {
+    if (data & 0x1) {
+        gpio_atomic_set_pin_output_high(DATA_PIN);
+    } else {
+        gpio_atomic_set_pin_output_low(DATA_PIN);
     }
-    
-    for (uint8_t i = 0; i < COLS_PER_HAND; i++) {
-        setPinInputHigh(col_pins[i]);
-    }
-    
-#ifdef BLUETOOTH_ENABLE
-    // Put Bluetooth into sleep mode
-    bluetooth_sleep();
-#endif
+    gpio_atomic_set_pin_output_high(CLOCK_PIN);
+    gpio_atomic_set_pin_output_low(CLOCK_PIN);
+
+    gpio_atomic_set_pin_output_high(LATCH_PIN);
+    gpio_atomic_set_pin_output_low(LATCH_PIN);
 }
 
-/**
- * Wake from sleep/suspend mode.
- */
-void matrix_power_up(void) {
-    // Reinitialize pins after waking
-    for (uint8_t i = 0; i < COLS_PER_HAND; i++) {
-        setPinOutput(col_pins[i]);
-        writePinHigh(col_pins[i]);
-    }
-    
-#ifdef BLUETOOTH_ENABLE
-    // Wake Bluetooth from sleep mode
-    bluetooth_wake();
-#endif
+static bool select_col(uint8_t col) {
+    pin_t pin = col_pins[col];
 
-#ifdef MATRIX_POWER_SAVE
-    matrix_timer = timer_read32();
-    matrix_power_saving = false;
+    if (pin != NO_PIN) {
+        gpio_atomic_set_pin_output_low(pin);
+        return true;
+    } else {
+        if (col == 10) {
+            shiftout_single(0x00);
+        } else {
+            shiftout_single(0x01);
+        }
+        return true;
+    }
+    return false;
+}
+
+static void unselect_col(uint8_t col) {
+    pin_t pin = col_pins[col];
+
+    if (pin != NO_PIN) {
+#ifdef MATRIX_UNSELECT_DRIVE_HIGH
+        gpio_atomic_set_pin_output_high(pin);
+#else
+        gpio_atomic_set_pin_input_high(pin);
 #endif
+    } else {
+        if (col == (MATRIX_COLS - 1))
+        gpio_atomic_set_pin_output_high(CLOCK_PIN);
+        gpio_atomic_set_pin_output_low(CLOCK_PIN);
+        gpio_atomic_set_pin_output_high(LATCH_PIN);
+        gpio_atomic_set_pin_output_low(LATCH_PIN);
+    }
+}
+
+static void unselect_cols(void) {
+    // unselect column pins
+    for (uint8_t x = 0; x < MATRIX_COLS; x++) {
+        pin_t pin = col_pins[x];
+        if (pin != NO_PIN) {
+#ifdef MATRIX_UNSELECT_DRIVE_HIGH
+            gpio_atomic_set_pin_output_high(pin);
+#else
+            gpio_atomic_set_pin_input_high(pin);
+#endif
+        }
+        if (x == (MATRIX_COLS - 1))
+            // unselect shift Register
+            shiftOut(0xFF);
+    }
+}
+
+static void matrix_init_pins(void) {
+    unselect_cols();
+    for (uint8_t x = 0; x < MATRIX_ROWS; x++) {
+        if (row_pins[x] != NO_PIN) {
+            gpio_atomic_set_pin_input_high(row_pins[x]);
+        }
+    }
+}
+
+static void matrix_read_rows_on_col(matrix_row_t current_matrix[], uint8_t current_col, matrix_row_t row_shifter) {
+    bool key_pressed = false;
+
+    // Select col
+    if (!select_col(current_col)) { // select col
+        return;                     // skip NO_PIN col
+    }
+
+    if (current_col < 10) {
+        matrix_output_select_delay();
+    } else {
+        for (int8_t cycle = 4; cycle > 0; cycle--) {
+            matrix_output_select_delay(); // 0.25us
+            matrix_output_select_delay();
+            matrix_output_select_delay();
+            matrix_output_select_delay();
+        }
+    }
+
+    // For each row...
+    for (uint8_t row_index = 0; row_index < ROWS_PER_HAND; row_index++) {
+        // Check row pin state
+        if (readMatrixPin(row_pins[row_index]) == 0) {
+            // Pin LO, set col bit
+            current_matrix[row_index] |= row_shifter;
+            key_pressed = true;
+        } else {
+            // Pin HI, clear col bit
+            current_matrix[row_index] &= ~row_shifter;
+        }
+
+    }
+
+    // // Unselect col
+    unselect_col(current_col);
+    matrix_output_unselect_delay(current_col, key_pressed); // wait for all Row signals to go HIGH
+}
+
+void matrix_init_custom(void) {
+    // initialize key pins
+    matrix_init_pins();
+}
+
+bool matrix_scan_custom(matrix_row_t current_matrix[]) {
+    matrix_row_t curr_matrix[MATRIX_ROWS] = {0};
+
+    // Set col, read rows
+    matrix_row_t row_shifter = MATRIX_ROW_SHIFTER;
+    for (uint8_t current_col = 0; current_col < MATRIX_COLS; current_col++, row_shifter <<= 1) {
+        matrix_read_rows_on_col(curr_matrix, current_col, row_shifter);
+    }
+
+    bool changed = memcmp(current_matrix, curr_matrix, sizeof(curr_matrix)) != 0;
+    if (changed) memcpy(current_matrix, curr_matrix, sizeof(curr_matrix));
+
+    return changed;
 }

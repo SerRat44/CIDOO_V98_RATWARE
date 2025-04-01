@@ -1,24 +1,24 @@
-# CIDOO V98 RATWARE
+# Cidoo v98 Firmware
+
+> [!CAUTION]
+> W.I.P DO NOT USE!
 
 ## Table of Contents
 
-- [CIDOO V98 RATWARE](#cidoo-v98-ratware)
+- [Cidoo v98 Firmware](#cidoo-v98-firmware)
   - [Table of Contents](#table-of-contents)
-  - [Info](#info)
-  - [Get Started](#get-started)
+  - [Overview](#overview)
+  - [Getting Started](#getting-started)
     - [Building](#building)
     - [Flashing](#flashing)
     - [VIA Support](#via-support)
   - [License](#license)
 
-## Info
+## Overview
 
-> [!CAUTION]
-> W.I.P DO NOT USE!
+Custom QMK firmware for the Cidoo v98 keyboard with VIA support.
 
-Custom QMK firmware for the Cidoo V98 keyboard with VIA support.
-
-## Get Started
+## Getting Started
 
 ### Building
 
